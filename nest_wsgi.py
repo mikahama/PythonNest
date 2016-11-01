@@ -22,15 +22,19 @@ from PythonNest import Request
 def handle_request(env, start_response, urls):
     code = "500 Internal Server Error"
     headers = [('Content-Type','text/html')]
-    content = "Internal Server error - no matching URL"
+    content = u"Internal Server error - no matching URL"
     for url in urls:
         if url.test_url(env['REQUEST_URI']):
             code, headers, content =  __create_request__(env, url,  url.handler)
-    start_response(code, headers)
-    return content
+    start_response(str(code), headers)
+    return [bytes(content)]
 
 
 def __create_request__(env, url, handler):
-    request = Request(url,env["HTTP_COOKIE"], method=env['REQUEST_METHOD'])
+    if "HTTP_COOKIE" in env.keys():
+        cookie = env["HTTP_COOKIE"]
+    else:
+        cookie = []
+    request = Request(url,cookie, method=env['REQUEST_METHOD'])
     handler(request)
     return request.response.code, request.response.headers, request.response.content

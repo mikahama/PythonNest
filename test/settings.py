@@ -1,12 +1,13 @@
 __author__ = 'mikahamalainen'
 
 import sys
+import test_app.views as views
 # Add the ptdraft folder path to the sys.path list
 sys.path.append('/Users/mikahamalainen/PycharmProjects/')
 
 from PythonNest import Url
 import PythonNest.nest_wsgi
-import views
+
 
 urls = [Url("/", views.start, regex=True), Url("/moi", views.moi, regex=True)]
 
