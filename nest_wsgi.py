@@ -19,22 +19,22 @@ from PythonNest import Request
 """
 
 
-def handle_request(env, start_response, urls):
+def handle_request(env, start_response, urls, settings):
     code = "500 Internal Server Error"
     headers = [('Content-Type','text/html')]
     content = u"Internal Server error - no matching URL"
     for url in urls:
         if url.test_url(env['REQUEST_URI']):
-            code, headers, content =  __create_request__(env, url,  url.handler)
+            code, headers, content =  __create_request__(env, url,  url.handler, settings)
     start_response(str(code), headers)
     return [content.encode("utf-8")]
 
 
-def __create_request__(env, url, handler):
+def __create_request__(env, url, handler, settings):
     if "HTTP_COOKIE" in env.keys():
         cookie = env["HTTP_COOKIE"]
     else:
-        cookie = []
-    request = Request(url,cookie, method=env['REQUEST_METHOD'])
+        cookie = ""
+    request = Request(url,cookie, method=env['REQUEST_METHOD'], settings=settings)
     handler(request)
-    return request.response.code, request.response.headers, request.response.content
+    return request.response.code, request.response.get_headers(), request.response.content
