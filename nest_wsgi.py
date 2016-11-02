@@ -27,7 +27,7 @@ def handle_request(env, start_response, urls):
         if url.test_url(env['REQUEST_URI']):
             code, headers, content =  __create_request__(env, url,  url.handler)
     start_response(str(code), headers)
-    return [bytes(content)]
+    return [content.encode("utf-8")]
 
 
 def __create_request__(env, url, handler):
