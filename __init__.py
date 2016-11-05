@@ -29,7 +29,11 @@ class Request():
         items = cookie_string.split("; ")
         dict = {}
         for item in items:
-            key, value = item.split("=", 1)
+            if "=" in item:
+                key, value = item.split("=", 1)
+            else:
+                key = item
+                value = True
             dict[key] = value
         return dict
 
@@ -63,6 +67,7 @@ class Session():
         self.settings = settings["mongo"]
         client = MongoClient(self.settings["url"])
         db = client[self.settings["database"]]
+        self.has_changed = False
 
         if id1 is not None and id2 is not None:
             #session open -> check
@@ -80,6 +85,7 @@ class Session():
 
         if id1 is None or id2 is None:
             #new session
+            self.has_changed = True
             session_secret = os.urandom(2000)
             self.id2 = hashlib.sha512(settings["secret_key"] + session_secret ).hexdigest()
             self.session_data = {"id2": self.id2, "last_renew": datetime.datetime.utcnow()}
@@ -124,7 +130,14 @@ class Session():
     def save(self):
         client = MongoClient(self.settings["url"])
         db = client[self.settings["database"]]
+        self.session_data["last_renew"] = datetime.datetime.utcnow()
         db.sessions.mycollection.update({'_id': ObjectId(self.id1)}, {"$set": self.session_data}, upsert=False)
+        self.has_changed = True
+
+    def close(self):
+        client = MongoClient(self.settings["url"])
+        db = client[self.settings["database"]]
+        db.sessions.delete_one({'_id': ObjectId(self.id1)})
 
 
 class Response():
@@ -133,11 +146,26 @@ class Response():
         self.code = 200
         self.headers = [('Content-Type','text/html; charset=utf-8')]
         self.session = Session(settings, id1, id2)
+        self.settings = settings
 
     def get_headers(self):
-        self.headers.append(("Set-Cookie", "id1=" + self.session.id1))
-        self.headers.append(("Set-Cookie", "id2=" + self.session.id2))
+        if self.session.has_changed:
+            cookie_age = self.cookie_date(self.settings["session_length"])
+            self.headers.append(("Set-Cookie", "id1=" + self.session.id1 + "; Expires="+cookie_age+"; HttpOnly; SameSite=Strict"))
+            self.headers.append(("Set-Cookie", "id2=" + self.session.id2 + "; Expires="+cookie_age+"; HttpOnly; SameSite=Strict"))
         return self.headers
+
+    def open_new_session(self):
+        self.session.close()
+        self.session = Session(self.settings)
+
+    def cookie_date(self, seconds):
+        now = datetime.datetime.utcnow()
+        expires = now + datetime.timedelta(seconds=seconds)
+        days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        date = days[expires.weekday()] + ", " + str(expires.day) + " " + months[expires.month-1] + " " + expires.strftime("%Y %H:%M:%S") + " GMT"
+        return date
 
 
 class Url():
