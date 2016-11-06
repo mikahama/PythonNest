@@ -51,7 +51,7 @@ class Request():
             template_file = sys._getframe().f_back.f_code.co_name
             template_path = os.path.dirname(os.path.abspath(sys._getframe().f_back.f_globals["__file__"]))
             try:
-                t = codecs.open(os.path.join(template_path, "templates", template_file+".html"), "r")
+                t = codecs.open(os.path.join(template_path, "templates", template_file+".html"), "r", encoding="utf-8")
                 template = Template(t.read())
                 self.response.content = template.render(context)
             except UnicodeError as e:
